@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "sharephoto",
-    "slug": "sharephoto",
+    "name": "ooni",
+    "slug": "ooni",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "ooni",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/splash.png",
@@ -19,7 +19,9 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "0.0.10",
+      "bundleIdentifier": "com.eliasapp.ooni"
     },
     "android": {
       "adaptiveIcon": {
