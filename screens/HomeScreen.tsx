@@ -1,13 +1,15 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Dimensions, Image, StyleSheet, Text, View} from 'react-native';
+import CameraRoll from "@react-native-community/cameraroll";
 import * as ImagePicker from 'expo-image-picker';
 import {get, post} from '../api';
 import WineGlass from '../components/WineGlass';
 import {ActivityIndicator, FAB} from 'react-native-paper';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as Permissions from 'expo-permissions'
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Permissions from 'expo-permissions';
 
 import LottieView from 'lottie-react-native';
 
@@ -21,7 +23,10 @@ export default function HomeScreen(){
   const animation = useRef(null);
 
 
+
+
   useEffect(() => {
+
     console.log('useeffect');
     async function getAllPhotos() {
       const result = await get('/users/photo').then((response)=>{
@@ -39,47 +44,71 @@ export default function HomeScreen(){
       })
     };
     getAllPhotos();
-    /*setTimeout(async () => {
+    setTimeout(async () => {
       await uploadAllPhotos();
-      getAllPhotos();
-    }, 2400);*/
+    }, 2400);
   }, []);
 
 
   async function uploadAllPhotos(){
-    setIsLoading(true)
-    await (async () => {
+    let permission = await MediaLibrary.requestPermissionsAsync();
 
-      await MediaLibrary.requestPermissionsAsync();
-      let token = await AsyncStorage.getItem('token');
-      console.log(`token is ${token}`)
 
-      const data = (await MediaLibrary.getAssetsAsync({
-        first: 2000,
-      })).assets;
+     const data = (await MediaLibrary.getAssetsAsync({
+       first: 2000,
+       mediaType: [MediaLibrary.MediaType.video, MediaLibrary.MediaType.photo]
+     })).assets;
+     //create the formdata for uploading in background
+     let toBeUploadInBackgroundFormdata = new FormData()
 
-      let total = data.length;
-      let inserted = 0;
-      let filesToUpload = []
-      for (let i = 0; i < total; i++) {
-        const result = await ImageManipulator.manipulateAsync(data[i].uri, [], {base64: true, compress: .5});
-        let uri =`data:image/jpeg;base64,${result.base64}`
-        console.log(`file name is ${data[i].filename}`)
-        filesToUpload.push({
-          filename: data[i].filename,
-          uri: uri
-        })
-      }
-      //upload files to servers
+     for (let i = 0; i < data.length ; i++) {
+      // const result = await ImageManipulator.manipulateAsync(data[i].uri, [], {base64:false, compress: .5});
+        const fileName = data[i].uri.substring(data[i].uri.lastIndexOf('/') + 1)
+        let fileUri = data[i].uri
+        const uriParts = data[i].uri.split('.');
+        let fileType = uriParts[uriParts.length - 1];
+       toBeUploadInBackgroundFormdata.append("backgroundUpload",{
+         fileUri,
+         name: fileName,
+         type: `image/${fileType}`,
+       })
+     }
+     console.log('formdata',toBeUploadInBackgroundFormdata)
 
-      let upload =  await post(`/users/photo`, {
+
+     //start the upload process
+
+     let token =  await AsyncStorage.getItem('token')
+
+
+     let options = {
+       method: "POST",
+       body: toBeUploadInBackgroundFormdata,
+       headers: {
+         'Content-Type': 'multipart/form-data;',
+         'x-access-token': token,
+       },
+     }
+     //create the request
+     let result = await post(`/users/media-background`, options)
+         .then((response)=>{
+             console.log('response from multiple is ',response)
+     }).catch((error)=>{
+           console.log('error is ',error)
+     })
+
+
+
+
+
+
+    /*  let upload =  await post(`/users/photo`, {
         files:filesToUpload
       }).then((response)=>{
         setIsLoading(false);
       }).catch((error)=>{
         console.log('response from error is ',error.toString())
-      })
-    })();
+      })*/
   }
 
   const pickImage = async () => {
@@ -93,7 +122,7 @@ export default function HomeScreen(){
       allowsEditing: false,
       aspect: [4, 3],
       quality: 1,
-      base64: true
+      base64: false
     });
 
 
@@ -172,7 +201,7 @@ export default function HomeScreen(){
 
         {data.length  == 0 && !isLoading &&
         <View style={styles.animationContainer}>
-          <LottieView
+         {/* <LottieView
               style={{
                 width: 200,
                 height: 200,
@@ -181,7 +210,7 @@ export default function HomeScreen(){
               source={require('./../assets/lotties/emptybox.json')}
               speed={1}
               loop={true} />
-
+*/}
           <View style={styles.errorMessageContainer}>
             <View style={styles.errorMessage}>
               <Text style={{
