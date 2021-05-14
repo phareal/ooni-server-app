@@ -24,7 +24,19 @@ export default function CreateAccountScreen({ navigation }){
 
   const onPressCreateAccount = async () => {
     setIsLoading(true);
-    const data = await post(`/users`, { name, email, password })
+
+    let body = JSON.stringify({ name, email, password })
+
+    let options = {
+      method: "POST",
+      body: body,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    }
+
+    const data = await post(`/users`, options)
         .then(async (data)=>{
           console.log('token is ',data.token)
           await AsyncStorage.setItem('token', data.token);

@@ -1,32 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import {Image, StyleSheet, Dimensions, View, Text, Alert} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {Dimensions, Image, StyleSheet, Text, View} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { post, get } from '../api';
+import {get, post} from '../api';
 import WineGlass from '../components/WineGlass';
-import { ActivityIndicator, FAB } from 'react-native-paper';
-const { width } = Dimensions.get('window');
-const BUBBLE_SIZE = Dimensions.get('window').width * 0.3;
+import {ActivityIndicator, FAB} from 'react-native-paper';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImageManipulator from 'expo-image-manipulator';
-import CameraRoll from "@react-native-community/cameraroll";
 import * as Permissions from 'expo-permissions'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import LottieView from 'lottie-react-native';
+
+const { width } = Dimensions.get('window');
+const BUBBLE_SIZE = Dimensions.get('window').width * 0.3;
 
 export default function HomeScreen(){
   const [image, setImage] = useState(null);
   const [ data, setData ] = useState([]);
   const [ isLoading, setIsLoading ] = useState(true);
+  const animation = useRef(null);
 
 
   useEffect(() => {
     console.log('useeffect');
     async function getAllPhotos() {
       const result = await get('/users/photo').then((response)=>{
-        console.log(`data dfrom is ${JSON.stringify(response)}`)
         let mediaUrl = [] as  any;
         for ( let i = 0; i < response.length; i++){
-          //let url = { uri: `data:image/jpeg;base64,${response.data[i]}` }
-          console.log(`data boob after is ${response[i]}`)
           let url = response[i]
           mediaUrl.push(url)
         }
@@ -38,49 +38,49 @@ export default function HomeScreen(){
         console.log(`error from fetching is ${error}`)
       })
     };
-     getAllPhotos();
-    setTimeout(async () => {
+    getAllPhotos();
+    /*setTimeout(async () => {
       await uploadAllPhotos();
       getAllPhotos();
-    }, 2400);
-
+    }, 2400);*/
   }, []);
 
+
   async function uploadAllPhotos(){
-     setIsLoading(true)
-      await (async () => {
+    setIsLoading(true)
+    await (async () => {
 
-        await MediaLibrary.requestPermissionsAsync();
-        let token = await AsyncStorage.getItem('token');
-        console.log(`token is ${token}`)
+      await MediaLibrary.requestPermissionsAsync();
+      let token = await AsyncStorage.getItem('token');
+      console.log(`token is ${token}`)
 
-        const data = (await MediaLibrary.getAssetsAsync({
-          first: 2000,
-        })).assets;
+      const data = (await MediaLibrary.getAssetsAsync({
+        first: 2000,
+      })).assets;
 
-        let total = data.length;
-        let inserted = 0;
-        let filesToUpload = []
-        for (let i = 0; i < total; i++) {
-          const result = await ImageManipulator.manipulateAsync(data[i].uri, [], {base64: true, compress: .5});
-          let uri =`data:image/jpeg;base64,${result.base64}`
-          console.log(`file name is ${data[i].filename}`)
-          filesToUpload.push({
-            filename: data[i].filename,
-            uri: uri
-          })
-        }
-        //upload files to servers
-
-       let upload =  await post(`/users/photo`, {
-          files:filesToUpload
-        }).then((response)=>{
-            setIsLoading(false);
-        }).catch((error)=>{
-          console.log('response from error is ',error.toString())
+      let total = data.length;
+      let inserted = 0;
+      let filesToUpload = []
+      for (let i = 0; i < total; i++) {
+        const result = await ImageManipulator.manipulateAsync(data[i].uri, [], {base64: true, compress: .5});
+        let uri =`data:image/jpeg;base64,${result.base64}`
+        console.log(`file name is ${data[i].filename}`)
+        filesToUpload.push({
+          filename: data[i].filename,
+          uri: uri
         })
-      })();
-    }
+      }
+      //upload files to servers
+
+      let upload =  await post(`/users/photo`, {
+        files:filesToUpload
+      }).then((response)=>{
+        setIsLoading(false);
+      }).catch((error)=>{
+        console.log('response from error is ',error.toString())
+      })
+    })();
+  }
 
   const pickImage = async () => {
 
@@ -102,65 +102,113 @@ export default function HomeScreen(){
     if (!result.cancelled) {
       //@ts-ignore
       let filename = result.uri.substring(result.uri.lastIndexOf('/') + 1)
-      let uri =`data:image/jpeg;base64,${result.base64}`
+      let fileUri =  result.uri
+      const uriParts = result.uri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
 
-      let filesToUpload = [];
-      filesToUpload.push({
-        filename: filename,
-        uri: uri
+      let formData = new FormData();
+
+
+      // @ts-ignore
+      formData.append("photo",{
+        uri: fileUri.toString(),
+        name:filename,
+        type: `image/${fileType}`,
       })
-      await post(`/users/photo`, {
-        files:filesToUpload
-      }).then((response)=>{
-        console.log(`response is ${response}`)
-      }).catch((error)=>{
-        console.log(`error is ${error}`)
-      });
 
-      setImage(result.uri);
+      //set an array of formdata
+
+      const token = await AsyncStorage.getItem('token');
+      let options = {
+        method: "POST",
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data; ',
+          'x-access-token': token,
+        },
+      }
 
       setIsLoading(true)
-      const newData = [...data];
-
-      newData.unshift(result.uri)
-      setData(newData);
+      await post(`/users/photo`, options).then((response)=>{
+        const newData = [...data];
+        newData.unshift(response)
+        setData(newData)
+        setIsLoading(false)
+      }).catch((error)=>{
+        setIsLoading(false)
+      });
 
       setTimeout(() => {
         setIsLoading(false);
       }, 400);
-      }
+    }
 
   };
 
+  // @ts-ignore
   const renderItem = ({ item, index }) => (
       <View>
         <Image  style={{width: 400, height: 400}}  source={{uri: item}}  />
       </View>
   );
   // @ts-ignore
+  // @ts-ignore
   return (
-    <View style={styles.container}>
-      {isLoading &&
+      <View style={styles.container}>
+        {isLoading &&
         <View style={styles.loading}>
           <ActivityIndicator animating />
         </View>
-      }
-      {data.length > 0 && !isLoading &&
-          <WineGlass
-              data={data}
-              renderItem={renderItem}
-              bubbleDistance={BUBBLE_SIZE * 1.2}
-              bubbleSize={BUBBLE_SIZE}
-              sphereRadius={BUBBLE_SIZE * 5}
-          />
-      }
+        }
+        {data.length > 0 && !isLoading &&
+        <WineGlass
+            data={data}
+            renderItem={renderItem}
+            bubbleDistance={BUBBLE_SIZE * 1.1}
+            bubbleSize={BUBBLE_SIZE}
+            sphereRadius={BUBBLE_SIZE * 4}
+         />
+        }
 
-      <FAB
-        style={styles.fab}
-        icon="plus"
-        onPress={pickImage}
-      />
-    </View>
+        {data.length  == 0 && !isLoading &&
+        <View style={styles.animationContainer}>
+          <LottieView
+              style={{
+                width: 200,
+                height: 200,
+              }}
+              ref={animation}
+              source={require('./../assets/lotties/emptybox.json')}
+              speed={1}
+              loop={true} />
+
+          <View style={styles.errorMessageContainer}>
+            <View style={styles.errorMessage}>
+              <Text style={{
+                color : '#fff',
+                justifyContent: 'center',
+                alignItems:'center',
+              }}>No photo were posted yet  </Text>
+              <Text  style={{
+                color : '#fff',
+                justifyContent: 'center',
+                alignItems:'center',
+              }}>Please click on the plus button to post photo  </Text>
+            </View>
+          </View>
+
+        </View>
+        }
+
+
+
+
+        <FAB
+            style={styles.fab}
+            icon="plus"
+            onPress={pickImage}
+        />
+      </View>
   );
 };
 
@@ -183,5 +231,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  animationContainer: {
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  errorMessageContainer : {
+    backgroundColor : "#f44336",
+
+    height: 60,
+    display:'flex'
+  },
+  errorMessage : {
+    margin:10,
+    justifyContent: 'center',
+    alignItems:'center',
+    color: '#fff',
   }
 });

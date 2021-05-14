@@ -31,7 +31,16 @@ export default function LoginScreen({ navigation }){
 
   const onPressLogin = async () => {
     setIsLoading(true);
-    const data = await post(`/users/login`, { email, password });
+    let body = JSON.stringify({ email, password })
+    let options = {
+      method: "POST",
+      body: body,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    }
+    const data = await post(`/users/login`, options);
     setIsLoading(false);
     if(data && data.token){
       console.log(`data token token ${data}`)
