@@ -1,8 +1,8 @@
 // noinspection TypeScriptValidateTypes
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-const URL_API_ = "https://ooni-api.herokuapp.com";
-const URL_API = "http://localhost:5000";
+const URL_API = "https://ooni-api.herokuapp.com";
+const URL_API_ = "http://localhost:5000";
 
 export async function post(uri: string, options:any) {
 
