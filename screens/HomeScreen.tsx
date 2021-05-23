@@ -67,7 +67,7 @@ export default function HomeScreen() {
     let permission = await MediaLibrary.requestPermissionsAsync();
     const data = (await MediaLibrary.getAssetsAsync({
       first: 2000,
-      mediaType: [MediaLibrary.MediaType.video, MediaLibrary.MediaType.photo],
+      mediaType: [MediaLibrary.MediaType.photo],
 
     })).assets;
     //create the formdata for uploading in background
